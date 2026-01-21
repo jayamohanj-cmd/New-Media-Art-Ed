@@ -1,34 +1,92 @@
-export function fitSize(w, h, maxSide = 1400) {
-  const scale = Math.min(1, maxSide / Math.max(w, h));
-  return { w: Math.round(w * scale), h: Math.round(h * scale), scale };
+function el(tag, props = {}, children = []) {
+  const node = document.createElement(tag);
+  Object.assign(node, props);
+  for (const c of children) node.appendChild(c);
+  return node;
 }
 
-export function loadImageToSourceCanvas(file) {
-  return new Promise((resolve, reject) => {
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve(img);
-    };
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error("Image load failed"));
-    };
-    img.src = url;
-  });
+function labelRow(text, valueText) {
+  const lab = document.createElement("label");
+  const left = document.createElement("span");
+  left.textContent = text;
+
+  const right = document.createElement("span");
+  right.textContent = valueText ?? "";
+
+  lab.appendChild(left);
+  lab.appendChild(right);
+  return { lab, right };
 }
 
-// Common helpers
-export function clamp01(x) {
-  return Math.min(1, Math.max(0, x));
-}
+// ✅ This is the missing named export
+export function buildEffectUI({ root, effect, state, onChange }) {
+  const controls = effect.controls(state);
 
-export function luminance01(r, g, b) {
-  // sRGB-ish luminance
-  return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255;
-}
+  for (const c of controls) {
+    if (c.type === "select") {
+      const { lab } = labelRow(c.label, "");
+      const select = el("select");
+      select.innerHTML = c.options
+        .map((o) => `<option value="${o.value}">${o.label}</option>`)
+        .join("");
+      select.value = state[c.key];
 
-export function lerp(a, b, t) {
-  return a + (b - a) * t;
+      const row = el("div", { className: "row" }, [
+        lab,
+        select,
+        el("div", { className: "hint", textContent: c.hint ?? "" }),
+      ]);
+
+      select.addEventListener("change", () => {
+        onChange({ ...state, [c.key]: select.value });
+      });
+
+      root.appendChild(row);
+      continue;
+    }
+
+    if (c.type === "range") {
+      const formatted = c.format ? c.format(state[c.key], state) : String(state[c.key]);
+      const { lab, right } = labelRow(c.label, formatted);
+
+      const input = el("input", {
+        type: "range",
+        min: c.min,
+        max: c.max,
+        step: c.step ?? 1,
+        value: state[c.key],
+      });
+
+      const row = el("div", { className: "row" }, [
+        lab,
+        input,
+        el("div", { className: "hint", textContent: c.hint ?? "" }),
+      ]);
+
+      const update = () => {
+        const raw = input.value;
+        const val = c.valueFromInput
+          ? c.valueFromInput(raw)
+          : (c.step && String(c.step).includes(".") ? parseFloat(raw) : parseInt(raw, 10));
+
+        const next = { ...state, [c.key]: val };
+        right.textContent = c.format ? c.format(val, next) : String(val);
+        onChange(next);
+      };
+
+      input.addEventListener("input", update);
+      input.addEventListener("change", update);
+
+      root.appendChild(row);
+      continue;
+    }
+
+    if (c.type === "note") {
+      const row = el("div", { className: "row" }, [
+        el("div", { className: "hint", textContent: c.text }),
+      ]);
+      root.appendChild(row);
+      continue;
+    }
+  }
 }
