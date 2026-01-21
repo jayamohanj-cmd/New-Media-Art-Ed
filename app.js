@@ -5,18 +5,8 @@ import { posterizeGradientEffect } from "./effects/posterizeGradient.js";
 import { halftoneEffect } from "./effects/halftone.js";
 import { stippleEffect } from "./effects/stipple.js";
 
-// --------------------
-// Effect registry
-// --------------------
-const effects = [
-  posterizeGradientEffect,
-  halftoneEffect,
-  stippleEffect,
-];
+const effects = [posterizeGradientEffect, halftoneEffect, stippleEffect];
 
-// --------------------
-// DOM references
-// --------------------
 const fileEl = document.getElementById("file");
 const effectSelect = document.getElementById("effectSelect");
 const controlsRoot = document.getElementById("controls");
@@ -29,7 +19,7 @@ const dimsEl = document.getElementById("dims");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-// Offscreen source canvas (keeps original image)
+// Source canvas (original)
 const srcCanvas = document.createElement("canvas");
 const srcCtx = srcCanvas.getContext("2d", { willReadFrequently: true });
 
@@ -37,9 +27,6 @@ let currentEffect = effects[0];
 let state = currentEffect.defaultState();
 let hasImage = false;
 
-// --------------------
-// Helpers
-// --------------------
 function setCanvasSize(w, h) {
   canvas.width = w;
   canvas.height = h;
@@ -52,18 +39,6 @@ function populateEffectSelect() {
     .map((e) => `<option value="${e.id}">${e.name}</option>`)
     .join("");
   effectSelect.value = currentEffect.id;
-}
-
-function render() {
-  if (!hasImage) return;
-
-  currentEffect.render({
-    srcCtx,
-    srcCanvas,
-    outCtx: ctx,
-    outCanvas: canvas,
-    state,
-  });
 }
 
 function rebuildControls() {
@@ -79,9 +54,17 @@ function rebuildControls() {
   });
 }
 
-// --------------------
-// Image loading
-// --------------------
+function render() {
+  if (!hasImage) return;
+  currentEffect.render({
+    srcCtx,
+    srcCanvas,
+    outCtx: ctx,
+    outCanvas: canvas,
+    state,
+  });
+}
+
 async function handleFile(file) {
   statusEl.textContent = `Loading: ${file.name}…`;
 
@@ -100,9 +83,7 @@ async function handleFile(file) {
   render();
 }
 
-// --------------------
-// Event listeners
-// --------------------
+// Events
 fileEl.addEventListener("change", (e) => {
   const f = e.target.files && e.target.files[0];
   if (!f) return;
@@ -144,8 +125,6 @@ exportBtn.addEventListener("click", () => {
   }, "image/png");
 });
 
-// --------------------
 // Init
-// --------------------
 populateEffectSelect();
 rebuildControls();
