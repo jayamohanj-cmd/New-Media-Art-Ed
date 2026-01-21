@@ -73,7 +73,7 @@ async function handleFile(file) {
   statusEl.textContent = `Loading: ${file.name}...`;
   const img = await loadImageToSourceCanvas(file);
 
-  const fitted = fitSize(img.naturalWidth, img.naturalHeight, 1400);
+  const fitted = fitSize(img.width, img.height, 1400);
   setCanvasSize(fitted.w, fitted.h);
 
   // draw into src
@@ -89,8 +89,12 @@ async function handleFile(file) {
 
 fileEl.addEventListener("change", (e) => {
   const f = e.target.files && e.target.files[0];
-  if (f) handleFile(f).catch(() => (statusEl.textContent = "Failed to load image."));
+  if (f) handleFile(f).catch((err) => {
+  console.error(err);
+  statusEl.textContent = "Failed to load image. Check Console for details.";
 });
+
+
 
 effectSelect.addEventListener("change", () => {
   const next = effects.find((e) => e.id === effectSelect.value);
