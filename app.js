@@ -5,12 +5,18 @@ import { posterizeGradientEffect } from "./effects/posterizeGradient.js";
 import { halftoneEffect } from "./effects/halftone.js";
 import { stippleEffect } from "./effects/stipple.js";
 
+// --------------------
+// Effect registry
+// --------------------
 const effects = [
   posterizeGradientEffect,
   halftoneEffect,
   stippleEffect,
 ];
 
+// --------------------
+// DOM references
+// --------------------
 const fileEl = document.getElementById("file");
 const effectSelect = document.getElementById("effectSelect");
 const controlsRoot = document.getElementById("controls");
@@ -23,7 +29,7 @@ const dimsEl = document.getElementById("dims");
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d", { willReadFrequently: true });
 
-// Offscreen source canvas: always keep original pixels here
+// Offscreen source canvas (keeps original image)
 const srcCanvas = document.createElement("canvas");
 const srcCtx = srcCanvas.getContext("2d", { willReadFrequently: true });
 
@@ -31,6 +37,9 @@ let currentEffect = effects[0];
 let state = currentEffect.defaultState();
 let hasImage = false;
 
+// --------------------
+// Helpers
+// --------------------
 function setCanvasSize(w, h) {
   canvas.width = w;
   canvas.height = h;
@@ -47,12 +56,13 @@ function populateEffectSelect() {
 
 function render() {
   if (!hasImage) return;
+
   currentEffect.render({
     srcCtx,
     srcCanvas,
     outCtx: ctx,
     outCanvas: canvas,
-    state
+    state,
   });
 }
 
@@ -65,18 +75,21 @@ function rebuildControls() {
     onChange: (next) => {
       state = next;
       render();
-    }
+    },
   });
 }
 
+// --------------------
+// Image loading
+// --------------------
 async function handleFile(file) {
-  statusEl.textContent = `Loading: ${file.name}...`;
-  const img = await loadImageToSourceCanvas(file);
+  statusEl.textContent = `Loading: ${file.name}…`;
 
+  const img = await loadImageToSourceCanvas(file);
   const fitted = fitSize(img.width, img.height, 1400);
+
   setCanvasSize(fitted.w, fitted.h);
 
-  // draw into src
   srcCtx.clearRect(0, 0, fitted.w, fitted.h);
   srcCtx.drawImage(img, 0, 0, fitted.w, fitted.h);
 
@@ -87,18 +100,23 @@ async function handleFile(file) {
   render();
 }
 
+// --------------------
+// Event listeners
+// --------------------
 fileEl.addEventListener("change", (e) => {
   const f = e.target.files && e.target.files[0];
-  if (f) handleFile(f).catch((err) => {
-  console.error(err);
-  statusEl.textContent = "Failed to load image. Check Console for details.";
+  if (!f) return;
+
+  handleFile(f).catch((err) => {
+    console.error(err);
+    statusEl.textContent = "Failed to load image. Check Console.";
+  });
 });
-
-
 
 effectSelect.addEventListener("change", () => {
   const next = effects.find((e) => e.id === effectSelect.value);
   if (!next) return;
+
   currentEffect = next;
   state = currentEffect.defaultState();
   rebuildControls();
@@ -113,6 +131,7 @@ resetBtn.addEventListener("click", () => {
 
 exportBtn.addEventListener("click", () => {
   if (!hasImage) return;
+
   canvas.toBlob((blob) => {
     if (!blob) return;
     const a = document.createElement("a");
@@ -125,5 +144,8 @@ exportBtn.addEventListener("click", () => {
   }, "image/png");
 });
 
+// --------------------
+// Init
+// --------------------
 populateEffectSelect();
 rebuildControls();
